@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "STEM Sight Reader",
+  "version": "2.0",
+  "description": "Autonomous AI screen reader for visually impaired students.",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "action": {
+    "default_title": "Start STEM Sight Reading"
+  },
+  "background": {
+    "service_worker": "background.js"
+  }
+}
