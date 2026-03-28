@@ -6,8 +6,10 @@ OrbitX
 ## Team Members
 | Name | Role | GitHub |
 |------|------|--------|
-| Jethin | Full Stack / Product | [@Jethin10](https://github.com/Jethin10) |
-| Add teammate | Add role | Add GitHub |
+| K. Naga Jethin | Backend | [@Jethin10](https://github.com/Jethin10) |
+| Kavaya Jaiswal | Frontend | [@kavyajaiswal007](https://github.com/kavyajaiswal007) |
+| Ishani Varshney | Product Thinker | [@ivarshney29](https://github.com/ivarshney29) |
+| Divyanshi Yadav | Research | [@divyanshi131107-ai](https://github.com/divyanshi131107-ai) |
 
 ## Problem Statement
 Crowdfunding platforms are good at helping founders collect money, but weak at enforcing accountability after fundraising. Backers usually lose visibility and control once they contribute, while founders who are genuinely building struggle to prove progress in a structured way.
@@ -19,6 +21,8 @@ Equifund solves this with a hybrid crowdfunding protocol where funds are tied to
 - a shared governance layer with milestone proof submission, backer voting, and validator arbitration
 
 The core idea is simple: backers should not just fund a promise, they should fund progress.
+
+In short, Equifund rethinks crowdfunding as a trust system, not just a payment flow.
 
 ## Tech Stack
 - Frontend: React, TypeScript, Vite, Motion
@@ -36,13 +40,22 @@ The core idea is simple: backers should not just fund a promise, they should fun
 - **Presentation (PPT/PDF):** Add link
 
 ## Screenshots
-Suggested screenshots to add before final submission:
+The current live product includes the following app views:
 
-1. Landing page
-2. Login page with founder and investor demo flows
-3. Investor campaign funding flow
-4. Founder campaign creation and milestone setup
-5. Governance or milestone approval screen
+1. **Landing Page**  
+   Premium protocol-style homepage with the Equifund brand, zero-fee positioning, and founder / investor navigation.
+
+2. **Core Feature Section**  
+   Highlights smart contract escrow, zero platform fees, quadratic voting, and instant liquidity.
+
+3. **Founder Hub**  
+   Dashboard showing raised capital, backer metrics, milestones, and escrow unlock tracking.
+
+4. **Investor Portfolio**  
+   Dashboard showing invested amount, active projects, and contribution activity synced with the backend.
+
+5. **Judge Demo Flows**  
+   Dedicated founder and investor login paths designed for smooth live presentation during judging.
 
 ## How to Run Locally
 ### 1. Backend setup
@@ -116,6 +129,15 @@ Equifund uses two parallel rails with one common trust engine.
 - quorum thresholds
 - validator arbitration
 - payout release logic
+
+## Key Innovation
+The most important design decision in Equifund is the separation of the funding rail from the governance rail.
+
+- In India, the product stays compliance-aware through a fiat-first flow using familiar providers.
+- Globally, the system can support crypto-native capital and smart escrow logic.
+- In both cases, the same milestone release engine governs trust.
+
+This gives Equifund a clear real-world deployment path while still preserving the programmability and transparency benefits of modern protocol design.
 
 ## Why This Project Matters
 Equifund turns crowdfunding from a leap of faith into a system of earned trust. Instead of handing over funds upfront, the platform enforces progress-linked release and creates a more transparent, accountable fundraising model for both founders and backers.
