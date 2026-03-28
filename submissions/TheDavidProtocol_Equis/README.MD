@@ -24,10 +24,10 @@ Traditional credit scoring is slow, backward-looking, and often penalizes users 
 - **Data Handling**: CSV-based ingestion mapping (SETU-compatible schema).
 
 ## 🔗 Links
-- **Presentation (PPT/PDF):** [EQUIS.pdf]
+- **Presentation (PPT/PDF):** [Presentation](./EQUIS.pdf)
 
 ## 📸 Screenshots
-![Dashboard.jpeg]
+![Dashboard](./Dashboard.jpeg)
 *Figure 1: The Live Pulse Dashboard featuring the 0-1000 Resilience Meter and Gemini-powered Strategy.*
 
 ## 🚀 How to Run Locally
