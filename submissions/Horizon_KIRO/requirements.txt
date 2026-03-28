@@ -1,0 +1,22 @@
+google-genai
+groq
+dotenv
+psutil
+mss
+customtkinter
+pytesseract
+Pillow
+easyocr
+requests
+sounddevice
+numpy
+scipy
+#ui
+PyQt5
+PyQt5-sip
+# graph visualization
+langgraph
+langchain-core
+fastapi
+uvicorn
+websockets
