@@ -8,7 +8,7 @@ Forward Fin Palette
 |------|------|--------|
 | David Tembhare | Backend | @David-2610 |
 | Prashasti | Frontend | @prashasti-sharma |
-| Rajesh Kumar | UI/UX | @ |
+| Rajesh Kumar | UI/UX | @Rajop2205 |
 | Rishi Raj | Research | @rishiiraj712-cloud |
 
 ## 💡 Problem Statement
