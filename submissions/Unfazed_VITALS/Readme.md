@@ -7,10 +7,10 @@
 
 | Name | Role | GitHub |
 | :--- | :--- | :--- |
-| **Aryan Saini** | Team Leader / Full Stack | @username |
-| **Aryan Gusain** | Backend / AI Logic | @username |
-| **Ansh Thakur** | Frontend / UI Design | @username |
-| **Anshika Garg** | Documentation / Testing | @username |
+| **Aryan Saini** | Team Leader / Frontend | @aryan-saini-dev |
+| **Aryan Gusain** | Backend / AI Logic | @AryanGusain-dev |
+| **Anshika Garg** | Documentation / Testing | @anshii123 |
+| **Ansh Thakur** | Backend / AI Logic | @anshthakur-GH |
 
 ---
 
@@ -42,7 +42,27 @@ Current healthcare is reactive and manual, leading to three primary systemic fai
 ---
 
 ### 📸 Screenshots
-*(Placeholder for UI screenshots: Highlighting the **Call Interface**, **Patient History Sidebar**, and the **Doctor Approval Dashboard**)*
+
+**Call Interface**
+![Call Interface](vitals-3-frontend/images/Screenshot%202026-03-28%20154000.png)
+
+**Patient History Sidebar**
+![Patient History](vitals-3-frontend/images/Screenshot%202026-03-28%20181544.png)
+
+**Doctor Approval Dashboard**
+![Doctor Dashboard](vitals-3-frontend/images/Screenshot%202026-03-28%20181554.png)
+
+**Voice Interaction View**
+![Voice Interaction](vitals-3-frontend/images/Screenshot%202026-03-28%20181600.png)
+
+**Patient Data Analysis**
+![Data Analysis](vitals-3-frontend/images/Screenshot%202026-03-28%20182059.png)
+
+**Symptom Tracking**
+![Symptom Tracking](vitals-3-frontend/images/Screenshot%202026-03-28%20182115.png)
+
+**Dashboard Overview**
+![Dashboard Overview](vitals-3-frontend/images/Screenshot%202026-03-28%20182130.png)
 
 ---
 

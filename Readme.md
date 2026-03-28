@@ -62,9 +62,7 @@ Your submission folder **must** include a `README.md` with the following structu
 <!-- List the tools, frameworks, languages used -->
 
 ## 🔗 Links
-- **Live Demo:** [link]
-- **Video Demo:** [link](if applicable)
-- **Presentation (PPT/PDF):** [link]
+- **Presentation (PPT/PDF):** https://drive.google.com/drive/folders/1EpG1mrEywmS8KJaucEK_qVclAHi1gmmx?usp=sharing
 
 ## 📸 Screenshots
 <!-- Add screenshots or a GIF of your project -->
