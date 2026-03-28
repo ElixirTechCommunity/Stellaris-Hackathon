@@ -7,9 +7,9 @@ Forward Fin Palette
 | Name | Role | GitHub |
 |------|------|--------|
 | David Tembhare | Backend | @David-2610 |
-| Prashasti | Frontend | @username |
-| Rajesh Kumar | UI/UX | @username |
-| Rishi Raj | Research | @username |
+| Prashasti | Frontend | @prashasti-sharma |
+| Rajesh Kumar | UI/UX | @ |
+| Rishi Raj | Research | @rishiiraj712-cloud |
 
 ## 💡 Problem Statement
 Managing personal finances effectively is still a challenge for most individuals due to lack of intelligent insights, fragmented financial data, and poor categorization of transactions. Users often struggle to track spending, identify patterns, and make informed financial decisions.
