@@ -16,6 +16,7 @@ Many users face difficulty completing digital payments when connectivity is poor
 ## Tech Stack
 - Android
 - Kotlin
+- GSM-assisted payment flow
 
 ## Links
 - **Live Demo:** https://airpaywebsite.vercel.app/about
@@ -29,6 +30,13 @@ Many users face difficulty completing digital payments when connectivity is poor
 
 ## How to Run Locally
 Project demo assets and additional details will be shared through the links above.
+
+## Workflow
+1. The user opens airpay and starts a payment journey through a simple mobile interface.
+2. The app helps the user review payment information in a cleaner and more accessible format.
+3. The payment flow is designed around low-connectivity conditions using GSM-based interaction.
+4. The user proceeds through the guided screens and completes the action from the device side.
+5. The app focuses on a smoother frontend experience for situations where standard internet-based flows are less reliable.
 
 ## Public Code Sample
 A small UI-only code sample is included in `public-ui/` for hackathon review. It is a static frontend preview and does not expose internal application logic or private implementation details.
