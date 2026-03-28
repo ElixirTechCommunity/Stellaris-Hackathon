@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Jarvis — Live Agent Architecture</title>
+  <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+    :root {
+      --bg:      #05050f;
+      --surface: #0b0b1a;
+      --border:  #1a1a35;
+      --accent:  #00d4ff;
+      --purple:  #7c3aed;
+      --green:   #00ff88;
+      --orange:  #f59e0b;
+      --red:     #ff4757;
+      --text:    #e2e8f0;
+      --muted:   #475569;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Inter', sans-serif;
+      height: 100vh; overflow: hidden;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 24px;
+      background: rgba(11,11,26,.95);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      flex-shrink: 0; z-index: 10;
+    }
+    .logo { display: flex; align-items: center; gap: 10px; }
+    .logo-icon {
+      width: 34px; height: 34px; border-radius: 8px;
+      background: linear-gradient(135deg,#00d4ff,#7c3aed);
+      display: flex; align-items: center; justify-content: center; font-size: 17px;
+    }
+    .logo h1 { font-size: 16px; font-weight: 600; }
+    .logo span { color: var(--accent); }
+
+    .header-right { display: flex; align-items: center; gap: 14px; }
+
+    .badge {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px;
+      background: var(--surface); border: 1px solid var(--border);
+      font-size: 11px; font-weight: 500;
+    }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--red); transition: background .3s; }
+    .dot.on { background: var(--green); animation: blink 2s ease infinite; }
+    @keyframes blink { 0%,100%{opacity:1}50%{opacity:.4} }
+
+    /* Legend */
+    .legend { display: flex; align-items: center; gap: 12px; }
+    .leg { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); }
+    .leg-dot { width: 9px; height: 9px; border-radius: 3px; }
+
+    /* ── Body ── */
+    .body { display: flex; flex: 1; overflow: hidden; }
+
+    /* ── Graph area ── */
+    #graph-container {
+      flex: 1; position: relative;
+      background: var(--bg);
+    }
+    #network {
+      width: 100%; height: 100%;
+    }
+
+    /* ── Side panel ── */
+    .side {
+      width: 300px; flex-shrink: 0;
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel { padding: 16px; border-bottom: 1px solid var(--border); }
+    .panel-title {
+      font-size: 10px; font-weight: 600; letter-spacing: 1.5px;
+      text-transform: uppercase; color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* Status */
+    .status-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 12px; border-radius: 8px;
+      background: #0d0d20; border: 1px solid var(--border);
+      font-size: 12px; transition: all .3s;
+    }
+    .status-row.running { border-color: rgba(0,212,255,.4); background: rgba(0,212,255,.05); }
+    .spin {
+      width: 12px; height: 12px; border-radius: 50%;
+      border: 2px solid rgba(0,212,255,.3); border-top-color: var(--accent);
+      animation: spin .7s linear infinite; display: none; flex-shrink: 0;
+    }
+    .spin.on { display: block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Active node pill */
+    .node-pill {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 4px 10px; border-radius: 6px;
+      background: rgba(0,212,255,.1); border: 1px solid rgba(0,212,255,.3);
+      font-size: 11px; font-family: 'JetBrains Mono', monospace;
+      color: var(--accent); margin-top: 8px;
+      min-height: 26px;
+    }
+
+    /* Query */
+    .query-box {
+      padding: 9px 11px; border-radius: 7px;
+      background: #0d0d20; border: 1px solid var(--border);
+      font-size: 12px; color: #94a3b8; font-style: italic;
+      word-break: break-word; line-height: 1.45;
+      transition: all .3s;
+    }
+    .query-box.has { font-style: normal; color: var(--text); border-color: rgba(0,212,255,.25); }
+
+    /* Intent badge */
+    .intent-tag {
+      display: inline-block; margin-top: 7px;
+      padding: 3px 9px; border-radius: 5px;
+      font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      font-weight: 600; letter-spacing: .5px;
+      background: rgba(124,58,237,.2); border: 1px solid rgba(124,58,237,.4);
+      color: #a78bfa;
+    }
+
+    /* Log */
+    .log-wrap { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+    .log-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px 6px; font-size: 10px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted);
+    }
+    .log-clear { background: transparent; border: none; cursor: pointer; font-size: 11px; color: var(--muted); }
+    .log-clear:hover { color: var(--text); }
+    .log-list {
+      flex: 1; overflow-y: auto; padding: 0 10px 10px;
+    }
+    .log-list::-webkit-scrollbar { width: 3px; }
+    .log-list::-webkit-scrollbar-thumb { background: var(--border); }
+    .log-entry {
+      display: flex; align-items: flex-start; gap: 7px;
+      padding: 6px 8px; border-radius: 6px; margin-bottom: 4px;
+      background: #0d0d20; border-left: 2px solid var(--muted);
+      font-size: 10px; font-family: 'JetBrains Mono', monospace;
+      animation: slide .2s ease;
+    }
+    @keyframes slide { from { opacity:0; transform: translateX(-6px); } to { opacity:1; transform:none; } }
+    .log-entry.node { border-left-color: var(--accent); }
+    .log-entry.done { border-left-color: var(--green); }
+    .log-t { color: var(--muted); flex-shrink: 0; }
+    .log-m { color: #94a3b8; word-break: break-word; }
+    .log-entry.node .log-m { color: var(--accent); }
+    .log-entry.done .log-m { color: var(--green); }
+
+    /* Stats footer */
+    .stats {
+      display: grid; grid-template-columns: 1fr 1fr 1fr;
+      gap: 8px; padding: 12px 16px;
+      border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .stat { text-align: center; }
+    .stat-v { font-size: 20px; font-weight: 700; color: var(--accent); }
+    .stat-l { font-size: 9px; color: var(--muted); letter-spacing: .5px; }
+
+    /* Watermark */
+    #watermark {
+      position: absolute; bottom: 12px; left: 16px;
+      font-size: 10px; color: rgba(71,85,105,.5);
+      font-family: 'JetBrains Mono', monospace;
+      pointer-events: none; z-index: 2;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">🤖</div>
+    <h1>Jarvis <span>/ Live Agent Architecture</span></h1>
+  </div>
+  <div class="header-right">
+    <div class="legend">
+      <div class="leg"><div class="leg-dot" style="background:#1e3a5f;border:1px solid #60a5fa"></div>Interface</div>
+      <div class="leg"><div class="leg-dot" style="background:#1a0d2e;border:1px solid #7c3aed"></div>Core</div>
+      <div class="leg"><div class="leg-dot" style="background:#1a1000;border:1px solid #f59e0b"></div>LLM</div>
+      <div class="leg"><div class="leg-dot" style="background:#001a0d;border:1px solid #059669"></div>Agent</div>
+      <div class="leg"><div class="leg-dot" style="background:#060f0a;border:1px solid #065f46"></div>Sub-Agent</div>
+    </div>
+    <div class="badge"><div class="dot" id="wsDot"></div><span id="wsLabel">Connecting…</span></div>
+  </div>
+</header>
+
+<!-- ── Body ── -->
+<div class="body">
+
+  <!-- Graph -->
+  <div id="graph-container">
+    <div id="network"></div>
+    <div id="watermark">LangGraph + FastAPI WebSocket</div>
+  </div>
+
+  <!-- Side panel -->
+  <div class="side">
+
+    <div class="panel">
+      <div class="panel-title">Status</div>
+      <div class="status-row" id="statusBar">
+        <div class="spin" id="spin"></div>
+        <span id="statusTxt">Waiting for command…</span>
+      </div>
+      <div class="node-pill" id="nodePill"><span>—</span></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">Last Command</div>
+      <div class="query-box" id="queryBox">No command yet</div>
+      <div class="intent-tag" id="intentTag">intent: —</div>
+    </div>
+
+    <div class="log-wrap">
+      <div class="log-header">
+        Execution Log
+        <button class="log-clear" onclick="clearLog()">Clear</button>
+      </div>
+      <div class="log-list" id="logList"></div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="stat-v" id="sTotal">0</div><div class="stat-l">CMDS</div></div>
+      <div class="stat"><div class="stat-v" id="sNodes">0</div><div class="stat-l">NODES</div></div>
+      <div class="stat"><div class="stat-v" id="sAgents">0</div><div class="stat-l">AGENTS</div></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════════════
+//  Graph Data
+// ════════════════════════════════════════════════════════════════
+
+const RAW_NODES = [
+  // Interface  (level 0)
+  { id:'voice_agent',      label:'🎤 Voice Agent',      group:'interface', level:0 },
+  { id:'widget',           label:'🤖 Float Widget',     group:'interface', level:0 },
+
+  // Core pipeline  (level 1-4)
+  { id:'master_agent',     label:'🧠 Master Agent',     group:'core',      level:1 },
+  { id:'groq_llm',         label:'⚡ Groq LLM\n(Llama 70B)',group:'llm',  level:2 },
+  { id:'gemini_llm',       label:'✨ Gemini Vision',    group:'llm',       level:2 },
+  { id:'task_planner',     label:'📋 Task Planner',     group:'core',      level:2 },
+  { id:'intent_router',    label:'🔀 Intent Router',    group:'core',      level:3 },
+  { id:'memory_manager',   label:'💾 Memory Manager',   group:'core',      level:3 },
+  { id:'safety_check',     label:'🛡️ Safety Check',    group:'core',      level:4 },
+  { id:'execution_engine', label:'⚙️ Execution Engine', group:'core',      level:4 },
+  { id:'conversational_fallback',label:'💬 Conv. Fallback',group:'core',  level:4 },
+  { id:'format_response',  label:'✉️ Format Response',  group:'core',      level:4 },
+
+  // Specialized agents  (level 5)
+  { id:'file_manager',          label:'📁 File Manager',       group:'agent', level:5 },
+  { id:'system_control',        label:'🖥️ System Control',    group:'agent', level:5 },
+  { id:'diagnostics_agent',     label:'📊 Diagnostics',        group:'agent', level:5 },
+  { id:'disk_analysis_agent',   label:'💿 Disk Analysis',      group:'agent', level:5 },
+  { id:'maintenance_agent',     label:'🔧 Maintenance',        group:'agent', level:5 },
+  { id:'health_check_agent',    label:'🏥 Health Check',       group:'agent', level:5 },
+  { id:'installer_agent',       label:'📦 Installer',          group:'agent', level:5 },
+  { id:'web_search_agent',      label:'🌐 Web Search',         group:'agent', level:5 },
+  { id:'app_launcher_agent',    label:'🚀 App Launcher',       group:'agent', level:5 },
+  { id:'vision_agent',          label:'👁️ Vision Agent',      group:'agent', level:5 },
+  { id:'personalization_agent', label:'🎨 Personalisation',    group:'agent', level:5 },
+  { id:'system_config_agent',   label:'⚙️ System Config',     group:'agent', level:5 },
+
+  // Sub-agents  (level 6)
+  { id:'duplicate_detector',   label:'🔍 Duplicate\nDetector',   group:'sub', level:6 },
+  { id:'file_organizer',       label:'📂 File\nOrganizer',        group:'sub', level:6 },
+  { id:'large_file_scanner',   label:'📏 Large File\nScanner',    group:'sub', level:6 },
+  { id:'folder_finder',        label:'🗂️ Folder\nFinder',        group:'sub', level:6 },
+  { id:'cpu_monitor',          label:'🖥️ CPU\nMonitor',          group:'sub', level:6 },
+  { id:'ram_monitor',          label:'💾 RAM\nMonitor',           group:'sub', level:6 },
+  { id:'disk_monitor',         label:'💿 Disk\nMonitor',          group:'sub', level:6 },
+  { id:'system_health_checker',label:'🏥 Health\nChecker',        group:'sub', level:6 },
+  { id:'winget_engine',        label:'📦 Winget\nEngine',         group:'sub', level:6 },
+  { id:'resource_downloader',  label:'⬇️ Resource\nDownloader',   group:'sub', level:6 },
+  { id:'screenshot_tool',      label:'📸 Screenshot\nTool',       group:'sub', level:6 },
+  { id:'vision_analyzer',      label:'🔍 Vision\nAnalyzer',       group:'sub', level:6 },
+  { id:'auto_fixer',           label:'🔧 Auto\nFixer',            group:'sub', level:6 },
+  { id:'solution_parser',      label:'💡 Solution\nParser',       group:'sub', level:6 },
+  { id:'temp_file_cleaner',    label:'🧹 Temp\nCleaner',          group:'sub', level:6 },
+  { id:'old_file_scanner',     label:'📅 Old File\nScanner',      group:'sub', level:6 },
+  { id:'disk_analyzer',        label:'📊 Disk\nAnalyzer',         group:'sub', level:6 },
+  { id:'large_folder_finder',  label:'📁 Large Folder\nFinder',   group:'sub', level:6 },
+];
+
+const RAW_EDGES = [
+  // Interface → Master
+  { from:'voice_agent', to:'master_agent' },
+  { from:'widget',      to:'master_agent' },
+
+  // Master ↔ LLM / core
+  { from:'master_agent',    to:'groq_llm',      dashes:true },
+  { from:'master_agent',    to:'task_planner' },
+  { from:'master_agent',    to:'memory_manager', dashes:true },
+  { from:'task_planner',    to:'groq_llm',       dashes:true },
+  { from:'task_planner',    to:'intent_router' },
+
+  // Router branches
+  { from:'intent_router', to:'safety_check' },
+  { from:'intent_router', to:'execution_engine' },
+  { from:'intent_router', to:'conversational_fallback' },
+  { from:'safety_check',  to:'execution_engine' },
+
+  // Fallback
+  { from:'conversational_fallback', to:'groq_llm',      dashes:true },
+  { from:'conversational_fallback', to:'format_response' },
+
+  // Execution engine → specialized agents
+  { from:'execution_engine', to:'file_manager' },
+  { from:'execution_engine', to:'system_control' },
+  { from:'execution_engine', to:'diagnostics_agent' },
+  { from:'execution_engine', to:'disk_analysis_agent' },
+  { from:'execution_engine', to:'maintenance_agent' },
+  { from:'execution_engine', to:'health_check_agent' },
+  { from:'execution_engine', to:'installer_agent' },
+  { from:'execution_engine', to:'web_search_agent' },
+  { from:'execution_engine', to:'app_launcher_agent' },
+  { from:'execution_engine', to:'vision_agent' },
+  { from:'execution_engine', to:'personalization_agent' },
+  { from:'execution_engine', to:'system_config_agent' },
+
+  // File manager sub-agents
+  { from:'file_manager', to:'duplicate_detector' },
+  { from:'file_manager', to:'file_organizer' },
+  { from:'file_manager', to:'large_file_scanner' },
+  { from:'file_manager', to:'folder_finder' },
+
+  // Diagnostics sub-agents
+  { from:'diagnostics_agent', to:'cpu_monitor' },
+  { from:'diagnostics_agent', to:'ram_monitor' },
+  { from:'diagnostics_agent', to:'disk_monitor' },
+  { from:'diagnostics_agent', to:'system_health_checker' },
+
+  // Installer sub-agents
+  { from:'installer_agent', to:'winget_engine' },
+  { from:'installer_agent', to:'resource_downloader' },
+
+  // Vision sub-agents
+  { from:'vision_agent', to:'screenshot_tool' },
+  { from:'vision_agent', to:'vision_analyzer' },
+  { from:'vision_agent', to:'auto_fixer' },
+  { from:'vision_agent', to:'solution_parser' },
+  { from:'vision_agent', to:'gemini_llm',      dashes:true },
+
+  // Maintenance sub-agents
+  { from:'maintenance_agent', to:'temp_file_cleaner' },
+  { from:'maintenance_agent', to:'old_file_scanner' },
+
+  // Disk analysis sub-agents
+  { from:'disk_analysis_agent', to:'disk_analyzer' },
+  { from:'disk_analysis_agent', to:'large_folder_finder' },
+
+  // Output pipeline
+  { from:'execution_engine', to:'memory_manager' },
+  { from:'memory_manager',   to:'format_response' },
+];
+
+// ════════════════════════════════════════════════════════════════
+//  Group styles
+// ════════════════════════════════════════════════════════════════
+
+const GROUP_STYLES = {
+  interface: {
+    color: { background:'#0a1628', border:'#2563eb', highlight:{background:'#0a1628',border:'#60a5fa'} },
+    font:  { color:'#93c5fd', size:12, face:'JetBrains Mono' },
+    size: 18,
+  },
+  core: {
+    color: { background:'#120a28', border:'#6d28d9', highlight:{background:'#120a28',border:'#a78bfa'} },
+    font:  { color:'#c4b5fd', size:12, face:'JetBrains Mono' },
+    size: 20,
+  },
+  llm: {
+    color: { background:'#1a1000', border:'#b45309', highlight:{background:'#1a1000',border:'#fbbf24'} },
+    font:  { color:'#fde68a', size:11, face:'JetBrains Mono' },
+    size: 16,
+  },
+  agent: {
+    color: { background:'#001a0d', border:'#047857', highlight:{background:'#001a0d',border:'#34d399'} },
+    font:  { color:'#6ee7b7', size:11, face:'JetBrains Mono' },
+    size: 15,
+  },
+  sub: {
+    color: { background:'#020f07', border:'#064e3b', highlight:{background:'#020f07',border:'#10b981'} },
+    font:  { color:'#6ee7b7', size:10, face:'JetBrains Mono' },
+    size: 12,
+  },
+};
+
+// Active / done style overrides
+const STYLE_ACTIVE = {
+  color: { background:'#001a2e', border:'#00d4ff', highlight:{background:'#001a2e',border:'#67e8f9'} },
+  font:  { color:'#00d4ff' },
+  shadow: { enabled:true, color:'rgba(0,212,255,0.55)', size:18, x:0, y:0 },
+  borderWidth: 2.5,
+};
+const STYLE_DONE = {
+  color: { background:'#001a0d', border:'#00ff88', highlight:{background:'#001a0d',border:'#4ade80'} },
+  font:  { color:'#00ff88' },
+  shadow: { enabled:false },
+  borderWidth: 1.5,
+};
+
+// ════════════════════════════════════════════════════════════════
+//  Build vis.js datasets
+// ════════════════════════════════════════════════════════════════
+
+const nodesDS = new vis.DataSet(RAW_NODES.map(n => ({
+  ...n,
+  shape:'box',
+  margin:{ top:6, bottom:6, left:10, right:10 },
+  shapeProperties:{ borderRadius:8 },
+  borderWidth:1.5,
+  ...GROUP_STYLES[n.group],
+})));
+
+const edgesDS = new vis.DataSet(RAW_EDGES.map((e,i) => ({
+  id: i,
+  from: e.from, to: e.to,
+  dashes: e.dashes || false,
+  arrows: { to:{ enabled:true, scaleFactor:0.45 } },
+  color:  { color:'#1a1a35', highlight:'#00d4ff', hover:'#00d4ff', opacity:0.8 },
+  width: 1,
+  smooth: { type:'cubicBezier', forceDirection:'vertical', roundness:0.45 },
+})));
+
+// ════════════════════════════════════════════════════════════════
+//  Network init
+// ════════════════════════════════════════════════════════════════
+
+const container = document.getElementById('network');
+const network   = new vis.Network(container, { nodes:nodesDS, edges:edgesDS }, {
+  layout: {
+    hierarchical: {
+      enabled:true, direction:'UD',
+      levelSeparation:130, nodeSpacing:110,
+      sortMethod:'directed', shakeTowards:'roots',
+    },
+  },
+  physics: { enabled:false },
+  interaction: {
+    hover:true, dragNodes:false,
+    dragView:true, zoomView:true,
+    tooltipDelay:200,
+  },
+  nodes: { chosen:false },
+  edges: { chosen:false },
+});
+
+// ════════════════════════════════════════════════════════════════
+//  State tracking
+// ════════════════════════════════════════════════════════════════
+
+const allIds  = new Set(RAW_NODES.map(n => n.id));
+let activeNode = null;
+let doneNodes  = new Set();
+let statTotal=0, statNodes=0, statAgents=0;
+
+function getGroup(id) {
+  const n = RAW_NODES.find(x=>x.id===id);
+  return n ? n.group : 'core';
+}
+function resetNode(id) {
+  const g = getGroup(id);
+  const base = GROUP_STYLES[g] || GROUP_STYLES.core;
+  nodesDS.update({ id, ...base, borderWidth:1.5, shadow:{enabled:false},
+    shapeProperties:{borderRadius:8}, margin:{top:6,bottom:6,left:10,right:10} });
+}
+
+function activateNode(id) {
+  if (!allIds.has(id)) return;
+  statNodes++;
+  document.getElementById('sNodes').textContent = statNodes;
+  if (getGroup(id)==='agent'||getGroup(id)==='sub') {
+    statAgents++; document.getElementById('sAgents').textContent=statAgents;
+  }
+
+  // Mark previous done
+  if (activeNode && activeNode !== id) {
+    nodesDS.update({ id:activeNode, ...STYLE_DONE });
+    doneNodes.add(activeNode);
+  }
+  activeNode = id;
+  nodesDS.update({ id, ...STYLE_ACTIVE });
+
+  // Focus / zoom gently
+  network.focus(id, { scale:0.75, animation:{ duration:400, easingFunction:'easeInOutQuad' } });
+
+  // Update pill
+  const pill = document.getElementById('nodePill');
+  const label = (RAW_NODES.find(x=>x.id===id)||{}).label || id;
+  pill.innerHTML = `<span>⚡</span> ${label.replace(/\n/g,' ')}`;
+
+  setStatus('running','⚡ '+id.replace(/_/g,' '));
+  addLog('node','⚡ '+id);
+}
+
+function queryDone(intent, response) {
+  if (activeNode) { nodesDS.update({ id:activeNode,...STYLE_DONE }); doneNodes.add(activeNode); }
+  activeNode=null;
+  setStatus('idle','✅ Done — '+intent);
+  addLog('done','✅ Complete ('+intent+')');
+  document.getElementById('intentTag').textContent='intent: '+intent;
+  document.getElementById('nodePill').innerHTML='<span>✅</span> Completed';
+}
+
+function queryStart(query) {
+  statTotal++; document.getElementById('sTotal').textContent=statTotal;
+  // Reset all nodes
+  doneNodes.clear(); activeNode=null;
+  RAW_NODES.forEach(n=>resetNode(n.id));
+  network.fit({ animation:{duration:600,easingFunction:'easeInOutQuad'} });
+
+  const qb=document.getElementById('queryBox');
+  qb.textContent=`"${query}"`;
+  qb.className='query-box has';
+  document.getElementById('intentTag').textContent='intent: extracting…';
+  document.getElementById('nodePill').innerHTML='<span>—</span>';
+  setStatus('running','Processing…');
+  addLog('node','▶ '+query.substring(0,55)+(query.length>55?'…':''));
+}
+
+// ════════════════════════════════════════════════════════════════
+//  UI helpers
+// ════════════════════════════════════════════════════════════════
+
+function setStatus(state, text) {
+  const bar=document.getElementById('statusBar');
+  const sp =document.getElementById('spin');
+  const tx =document.getElementById('statusTxt');
+  bar.className='status-row'+(state==='running'?' running':'');
+  sp.className ='spin'+(state==='running'?' on':'');
+  tx.textContent=text;
+}
+
+function addLog(type,msg) {
+  const list=document.getElementById('logList');
+  const div=document.createElement('div');
+  div.className='log-entry '+type;
+  const now=new Date();
+  const t=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}:${now.getSeconds().toString().padStart(2,'0')}`;
+  div.innerHTML=`<span class="log-t">${t}</span><span class="log-m">${msg}</span>`;
+  list.appendChild(div);
+  list.scrollTop=list.scrollHeight;
+  while(list.children.length>150) list.removeChild(list.firstChild);
+}
+function clearLog() { document.getElementById('logList').innerHTML=''; }
+
+// ════════════════════════════════════════════════════════════════
+//  WebSocket
+// ════════════════════════════════════════════════════════════════
+
+let ws=null, reconnTim=null;
+
+function connect() {
+  clearTimeout(reconnTim);
+  ws=new WebSocket(`ws://${location.host}/ws`);
+  ws.onopen=()=>{ setWs(true); addLog('info','🔗 Connected'); };
+  ws.onclose=()=>{ setWs(false); addLog('info','⚡ Disconnected — retry 3s'); reconnTim=setTimeout(connect,3000); };
+  ws.onerror=()=>setWs(false);
+  ws.onmessage=ev=>{
+    try {
+      const m=JSON.parse(ev.data);
+      if(m.type==='query_start')  queryStart(m.query);
+      if(m.type==='node_active')  activateNode(m.node);
+      if(m.type==='query_done')   queryDone(m.intent||'unknown', m.response||'');
+    } catch(e){}
+  };
+}
+
+function setWs(on) {
+  document.getElementById('wsDot').className ='dot'+(on?' on':'');
+  document.getElementById('wsLabel').textContent=on?'Connected':'Disconnected';
+}
+
+// ════════════════════════════════════════════════════════════════
+//  Boot
+// ════════════════════════════════════════════════════════════════
+
+connect();
+
+// Fit the view to show all nodes on first render
+setTimeout(() => {
+  network.fit({ animation:{ duration:600, easingFunction:'easeInOutQuad' } });
+}, 800);
+
+network.once('stabilized', () => {
+  network.fit({ animation:{ duration:600, easingFunction:'easeInOutQuad' } });
+});
+</script>
+</body>
+</html>
+

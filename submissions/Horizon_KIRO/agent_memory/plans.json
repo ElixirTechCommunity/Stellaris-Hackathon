@@ -1,0 +1,56 @@
+{
+  "623b7507": {
+    "id": "623b7507",
+    "user_input": "scan duplicates and remove it from test1 folder in desktop",
+    "goal": "remove duplicates from test1 folder",
+    "tasks": [
+      {
+        "id": "444eda52-082",
+        "intent": "file_management",
+        "action": "find_duplicates",
+        "parameters": {
+          "folder_name": "test1",
+          "confirm": false
+        },
+        "description": "Find duplicate files in the test1 folder",
+        "status": "pending",
+        "priority": 3,
+        "dependencies": [],
+        "dry_run": false,
+        "requires_confirmation": false,
+        "result": null,
+        "error": null,
+        "retry_count": 0,
+        "max_retries": 3,
+        "created_at": "2026-03-28T17:59:37.216114",
+        "started_at": null,
+        "completed_at": null
+      },
+      {
+        "id": "0014221b-f1b",
+        "intent": "file_management",
+        "action": "remove_duplicates",
+        "parameters": {
+          "folder_name": "test1",
+          "confirm": true
+        },
+        "description": "Remove duplicate files found in the test1 folder",
+        "status": "pending",
+        "priority": 2,
+        "dependencies": [
+          "444eda52-082"
+        ],
+        "dry_run": false,
+        "requires_confirmation": true,
+        "result": null,
+        "error": null,
+        "retry_count": 0,
+        "max_retries": 3,
+        "created_at": "2026-03-28T17:59:37.216175",
+        "started_at": null,
+        "completed_at": null
+      }
+    ],
+    "created_at": "2026-03-28T17:59:36.436277"
+  }
+}
