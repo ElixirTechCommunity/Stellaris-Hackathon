@@ -130,6 +130,13 @@ python3 -m http.server 8080
 For the Android application, build requirements and setup instructions will be published in a follow-up release.
 
 ---
+## Documentation
+- `docs/SYSTEM_DOCUMENTATION.md` contains the current project/system overview.
+- `docs/FEATURE_DOCUMENTATION.md` contains the current feature-level documentation.
+
+These documents provide a higher-level system and feature handoff suitable for engineering review without exposing private implementation details.
+
+---
 
 ## Why GSM
 
