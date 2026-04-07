@@ -46,6 +46,7 @@ class ServiceInstance(Base):
     commands = Column(JSON, nullable=True)         # e.g. ["run", "migrate"]
     healthcheck_url = Column(String, nullable=True)
     env = Column(String, nullable=False)
+    triggered_by = Column(String, nullable=True)
 
     status = Column(String, default="idle")  # idle, running, failed
 
@@ -107,6 +108,15 @@ def init_db():
             print("⚠️  Operations table missing 'triggered_by' column. Adding it...")
             try:
                 conn.execute(text("ALTER TABLE operations ADD COLUMN triggered_by TEXT"))
+                conn.commit()
+            except Exception as e:
+                print(f"❌ Failed to add column: {e}")
+        try:
+            conn.execute(text("SELECT triggered_by FROM service_instances LIMIT 1"))
+        except Exception:
+            print("⚠️  service_instances table missing 'triggered_by' column. Adding it...")
+            try:
+                conn.execute(text("ALTER TABLE service_instances ADD COLUMN triggered_by TEXT"))
                 conn.commit()
             except Exception as e:
                 print(f"❌ Failed to add column: {e}")

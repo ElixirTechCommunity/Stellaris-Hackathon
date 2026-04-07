@@ -21,9 +21,6 @@ class DeclareServiceRequest(BaseModel):
     node_name: str = Field(..., examples=["node-1"])
     repo_url: str | None = None
     flake: str | None = None
-    commands: list[str] | None = None
-    healthcheck_url: str | None = None
-    environment: Literal["dev", "staging", "prod"] = "dev"
     triggered_by: str | None = None
 
 class TeardownRequest(BaseModel):
@@ -47,7 +44,6 @@ class RegisterNodeRequest(BaseModel):
     name: str = Field(..., examples=["node-1"])
     uuid: str = Field(..., examples=["node-1-unique-id"])
     host: str = Field(..., examples=["http://10.0.0.5:8001"])
-    environment: Literal["dev", "staging", "prod"] = "dev"
 
 class RegisterNodeResponse(BaseModel):
     status: str

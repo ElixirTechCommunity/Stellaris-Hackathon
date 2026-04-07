@@ -8,12 +8,12 @@ import hmac
 import hashlib
 import json
 import time
-import os
 from datetime import datetime, UTC
 from db import SessionLocal, Operation
 from app.models import DeployRequest, TeardownRequest, RollbackRequest
+from app.config import WEBHOOK_SECRET
 
-WEBHOOK_SECRET = os.getenv("WEBHOOK_SECRET", "super-secret-key").encode()
+WEBHOOK_SECRET_BYTES = WEBHOOK_SECRET.encode()
 
 def _mark(op_id: str, status: str, message: str, error: str = None):
     db = SessionLocal()
@@ -31,7 +31,7 @@ def _mark(op_id: str, status: str, message: str, error: str = None):
 
 def _generate_hmac_signature(body_str: str, timestamp: str) -> str:
     message = body_str + timestamp
-    return hmac.new(WEBHOOK_SECRET, message.encode(), hashlib.sha256).hexdigest()
+    return hmac.new(WEBHOOK_SECRET_BYTES, message.encode(), hashlib.sha256).hexdigest()
 
 async def send_agent_command(node_host: str, payload: dict):
     """Send an HMAC-signed POST to the remote agent's /command endpoint."""
@@ -76,9 +76,11 @@ async def send_agent_inspect(node_host: str, flake_path: str):
         res.raise_for_status()
         return res.json()
 
-async def run_deploy(op_id: str, req: DeployRequest, node_host: str):
+async def run_deploy(op_id: str, req: DeployRequest, node_host: str | None = None):
     _mark(op_id, "running", f"Sending deploy command to agent on {req.node_name}...")
     try:
+        if not node_host:
+            raise ValueError("Node host is required to dispatch deploy to agent.")
         if not req.flake:
             raise ValueError("A Nix flake reference is required to hit the agent's /command endpoint.")
         

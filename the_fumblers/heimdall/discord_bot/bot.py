@@ -78,6 +78,15 @@ async def send_error_embed(interaction: discord.Interaction, error: str):
         embed.add_field(name="💡 Troubleshooting", value="The Control Plane seems offline. Ensure `bash start.sh` is running on port 8000.", inline=False)
     await interaction.followup.send(embed=embed)
 
+async def safe_defer(interaction: discord.Interaction):
+    if interaction.response.is_done():
+        return
+    try:
+        await interaction.response.defer(thinking=True)
+    except discord.NotFound:
+        # Interaction expired; avoid crashing the command handler.
+        return
+
 def op_embed(op: dict) -> discord.Embed:
     s = op.get("status", "unknown")
     color = {"success": discord.Color.green(), "failed": discord.Color.red(), "running": discord.Color.yellow(), "pending": discord.Color.blurple()}.get(s, discord.Color.greyple())
@@ -135,29 +144,23 @@ async def send_live_health_monitor(interaction: discord.Interaction, service_nam
     asyncio.create_task(monitor_loop())
 
 @tree.command(name="register-node", description="Register a new infrastructure node (agent).")
-@app_commands.describe(name="Display name for the node", node_id="Unique identifier for the node", host="Agent URL (e.g. http://10.0.0.5:8001)", environment="Target environment")
-@app_commands.choices(environment=[app_commands.Choice(name=e, value=e) for e in ENVS])
-async def cmd_node_register(interaction: discord.Interaction, name: str, node_id: str, host: str, environment: app_commands.Choice[str] = None):
-    await interaction.response.defer(thinking=True)
-    env_val = environment.value if environment else "dev"
-    payload = {"name": name, "uuid": node_id, "host": host, "environment": env_val}
+@app_commands.describe(name="Display name for the node", node_id="Unique identifier for the node", host="Agent URL (e.g. http://10.0.0.5:8001)")
+async def cmd_node_register(interaction: discord.Interaction, name: str, node_id: str, host: str):
+    await safe_defer(interaction)
+    payload = {"name": name, "uuid": node_id, "host": host}
     try:
         resp = await api_post("/nodes", payload)
         await interaction.followup.send(f"✅ {resp.get('message', 'Node registered.')}")
     except Exception as e: await send_error_embed(interaction, str(e))
 
 @tree.command(name="register", description="Declare a new service configuration.")
-@app_commands.describe(service="Service name", node_name="Target node name", flake="Nix flake reference", commands="Comma-separated commands", healthcheck_url="Health poll URL", environment="Target environment")
-@app_commands.choices(environment=[app_commands.Choice(name=e, value=e) for e in ENVS])
+@app_commands.describe(service="Service name", node_name="Target node name", flake="Nix flake reference")
 @app_commands.autocomplete(node_name=node_autocomplete)
-async def cmd_register(interaction: discord.Interaction, service: str, node_name: str, flake: str = None, commands: str = None, healthcheck_url: str = None, environment: app_commands.Choice[str] = None):
-    await interaction.response.defer(thinking=True)
-    env_val = environment.value if environment else "dev"
-    cmd_list = [c.strip() for c in commands.split(",")] if commands else []
-    payload = {"service": service, "node_name": node_name, "environment": env_val, "triggered_by": str(interaction.user)}
-    if flake: payload["flake"] = flake
-    if cmd_list: payload["commands"] = cmd_list
-    if healthcheck_url: payload["healthcheck_url"] = healthcheck_url
+async def cmd_register(interaction: discord.Interaction, service: str, node_name: str, flake: str = None):
+    await safe_defer(interaction)
+    payload = {"service": service, "node_name": node_name, "triggered_by": str(interaction.user)}
+    if flake:
+        payload["flake"] = flake
     try:
         resp = await api_post("/services", payload)
         await interaction.followup.send(f"✅ {resp.get('message', 'Service declared.')}")
@@ -167,19 +170,17 @@ async def cmd_register(interaction: discord.Interaction, service: str, node_name
         if "Connect" in str(e): await send_live_health_monitor(interaction, service_name=service)
 
 @tree.command(name="deploy", description="Trigger a project deployment.")
-@app_commands.describe(service="Service name", node_name="Override node", flake="Override flake", commands="Override commands", healthcheck_url="Override health URL", version="Version tag/branch", environment="Target environment")
-@app_commands.choices(environment=[app_commands.Choice(name=e, value=e) for e in ENVS])
+@app_commands.describe(service="Service name", node_name="Override node", flake="Override flake", version="Version tag/branch")
 @app_commands.autocomplete(service=service_autocomplete, node_name=node_autocomplete)
-async def cmd_deploy(interaction: discord.Interaction, service: str, node_name: str = None, repo_url: str = None, flake: str = None, commands: str = None, healthcheck_url: str = None, version: str = "latest", environment: app_commands.Choice[str] = None):
-    await interaction.response.defer(thinking=True)
-    env_val = environment.value if environment else "dev"
-    cmd_list = [c.strip() for c in commands.split(",")] if commands else []
-    payload = {"service": service, "version": version, "environment": env_val, "triggered_by": str(interaction.user)}
-    if node_name: payload["node_name"] = node_name
-    if repo_url: payload["repo_url"] = repo_url
-    if flake: payload["flake"] = flake
-    if cmd_list: payload["commands"] = cmd_list
-    if healthcheck_url: payload["healthcheck_url"] = healthcheck_url
+async def cmd_deploy(interaction: discord.Interaction, service: str, node_name: str = None, repo_url: str = None, flake: str = None, version: str = "latest"):
+    await safe_defer(interaction)
+    payload = {"service": service, "version": version, "triggered_by": str(interaction.user)}
+    if node_name:
+        payload["node_name"] = node_name
+    if repo_url:
+        payload["repo_url"] = repo_url
+    if flake:
+        payload["flake"] = flake
     try:
         resp = await api_post("/deploy", payload)
         op_id = resp["operation_id"]
@@ -195,7 +196,7 @@ async def cmd_deploy(interaction: discord.Interaction, service: str, node_name: 
 @app_commands.describe(service="Service name to teardown")
 @app_commands.autocomplete(service=service_autocomplete)
 async def cmd_teardown(interaction: discord.Interaction, service: str):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         resp = await api_post("/teardown", {"service": service, "triggered_by": str(interaction.user)})
         op_id = resp["operation_id"]
@@ -205,15 +206,13 @@ async def cmd_teardown(interaction: discord.Interaction, service: str):
     except Exception as e: await send_error_embed(interaction, str(e))
 
 @tree.command(name="rollback", description="Roll back a service.")
-@app_commands.describe(service="Service name", environment="Target environment", target_version="Version to roll back to")
-@app_commands.choices(environment=[app_commands.Choice(name=e, value=e) for e in ENVS])
+@app_commands.describe(service="Service name", target_version="Version to roll back to")
 @app_commands.autocomplete(service=service_autocomplete)
-async def cmd_rollback(interaction: discord.Interaction, service: str, environment: app_commands.Choice[str], target_version: str, reason: str = ""):
-    await interaction.response.defer(thinking=True)
+async def cmd_rollback(interaction: discord.Interaction, service: str, target_version: str, reason: str = ""):
+    await safe_defer(interaction)
     try:
         resp = await api_post("/rollback", {
             "service": service,
-            "environment": environment.value,
             "target_version": target_version,
             "reason": reason or None,
             "triggered_by": str(interaction.user)
@@ -226,7 +225,7 @@ async def cmd_rollback(interaction: discord.Interaction, service: str, environme
 
 @tree.command(name="status", description="Get operation status.")
 async def cmd_status(interaction: discord.Interaction, operation_id: str):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         op = await api_get(f"/operations/{operation_id}")
         await interaction.followup.send(embed=op_embed(op))
@@ -234,7 +233,7 @@ async def cmd_status(interaction: discord.Interaction, operation_id: str):
 
 @tree.command(name="nodes", description="List registered nodes.")
 async def cmd_nodes(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         nodes = await api_get("/nodes")
         embed = discord.Embed(title=f"🖥️ Registered Nodes ({len(nodes)})", color=discord.Color.teal())
@@ -246,7 +245,7 @@ async def cmd_nodes(interaction: discord.Interaction):
 
 @tree.command(name="services", description="List all registered services and their status.")
 async def cmd_services(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         services = await api_get("/services")
         if not services:
@@ -272,12 +271,12 @@ async def cmd_services(interaction: discord.Interaction):
 @tree.command(name="health", description="Live health monitor.")
 @app_commands.autocomplete(service=service_autocomplete)
 async def cmd_health(interaction: discord.Interaction, service: str = None):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     await send_live_health_monitor(interaction, service_name=service)
 
 @tree.command(name="deploy-all", description="Trigger a full deployment for ALL registered services.")
 async def cmd_deploy_all(interaction: discord.Interaction):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         resp = await api_post("/deploy-all", {"triggered_by": str(interaction.user)})
         ids = resp.get("operation_ids", [])
@@ -293,7 +292,7 @@ async def cmd_deploy_all(interaction: discord.Interaction):
 @tree.command(name="audit", description="View recent infrastructure audit logs.")
 @app_commands.describe(limit="Number of logs to show (max 50)")
 async def cmd_audit(interaction: discord.Interaction, limit: int = 15):
-    await interaction.response.defer(thinking=True)
+    await safe_defer(interaction)
     try:
         logs = await api_get(f"/operations/audit?limit={limit}")
         if not logs:
@@ -313,11 +312,10 @@ async def cmd_audit(interaction: discord.Interaction, limit: int = 15):
     except Exception as e: await send_error_embed(interaction, str(e))
 
 @tree.command(name="add-node", description="Alias for /register-node.")
-@app_commands.describe(name="Display name", node_id="Unique ID", host="Agent URL", environment="Target environment")
-@app_commands.choices(environment=[app_commands.Choice(name=e, value=e) for e in ENVS])
-async def cmd_add_node(interaction: discord.Interaction, name: str, node_id: str, host: str, environment: app_commands.Choice[str] = None):
+@app_commands.describe(name="Display name", node_id="Unique ID", host="Agent URL")
+async def cmd_add_node(interaction: discord.Interaction, name: str, node_id: str, host: str):
     # Just proxy to the same command logic
-    await cmd_node_register(interaction, name, node_id, host, environment)
+    await cmd_node_register(interaction, name, node_id, host)
 
 @bot.event
 async def on_ready():

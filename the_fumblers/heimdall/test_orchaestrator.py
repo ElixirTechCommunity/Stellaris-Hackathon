@@ -1,6 +1,13 @@
+import os
 import asyncio
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("HEIMDALL_ENV", "test")
+os.environ.setdefault("HEIMDALL_ALLOW_DEFAULTS", "1")
+os.environ.setdefault("INFRA_API_KEY", "heimdall")
+os.environ.setdefault("WEBHOOK_SECRET", "super-secret-key")
+
 import api
 from datetime import datetime, UTC
 from db import SessionLocal, Node, Operation, ServiceInstance, init_db
@@ -134,7 +141,7 @@ def test_orchestrator_nodes_endpoint(monkeypatch):
     # Prevent monitor task racing in test client startup
     monkeypatch.setattr(api.app.router, "on_startup", [])
     client = TestClient(api.app)
-    r = client.get("/nodes")
+    r = client.get("/nodes", headers={"X-API-Key": "heimdall"})
     assert r.status_code == 200
     body = r.json()
     assert any(n["name"] == "node1" for n in body)

@@ -1,22 +1,17 @@
 {
-  "dummy-api": {
-    "pid": 45300,
+  "success-svc": {
+    "pid": 1234,
     "status": "dead",
-    "health_url": "http://0.0.0.0:8080/"
+    "health_url": null
   },
   "service-1": {
-    "pid": 68806,
-    "status": "healthy",
+    "pid": 23084,
+    "status": "dead",
     "health_url": "http://127.0.0.1:5000/"
   },
   "worker-1": {
-    "pid": 67532,
-    "status": "healthy",
-    "health_url": null
-  },
-  "nodejs-app": {
-    "pid": 67708,
-    "status": "healthy",
+    "pid": 21388,
+    "status": "dead",
     "health_url": null
   }
 }

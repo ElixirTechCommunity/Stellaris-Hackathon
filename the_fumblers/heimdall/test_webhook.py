@@ -1,8 +1,15 @@
+import os
 import hashlib
 import hmac
 import json
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("HEIMDALL_ENV", "test")
+os.environ.setdefault("HEIMDALL_ALLOW_DEFAULTS", "1")
+os.environ.setdefault("INFRA_API_KEY", "heimdall")
+os.environ.setdefault("WEBHOOK_SECRET", "super-secret-key")
+
 from api import app, WEBHOOK_SECRET
 from db import SessionLocal, Node, ServiceInstance, Operation, init_db
 
@@ -83,7 +90,7 @@ def test_nodes_endpoint():
     # Register a node first
     test_webhook_register_success()
     
-    response = client.get('/nodes')
+    response = client.get('/nodes', headers={"X-API-Key": "heimdall"})
     assert response.status_code == 200
     nodes = response.json()
     assert any(n['name'] == 'node-v2' for n in nodes)

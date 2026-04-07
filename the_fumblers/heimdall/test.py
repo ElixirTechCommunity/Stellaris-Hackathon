@@ -1,8 +1,15 @@
+import os
 import hashlib
 import hmac
 import json
 import pytest
 from fastapi.testclient import TestClient
+
+os.environ.setdefault("HEIMDALL_ENV", "test")
+os.environ.setdefault("HEIMDALL_ALLOW_DEFAULTS", "1")
+os.environ.setdefault("INFRA_API_KEY", "heimdall")
+os.environ.setdefault("WEBHOOK_SECRET", "super-secret-key")
+
 from api import app, WEBHOOK_SECRET
 from db import SessionLocal, Node, ServiceInstance, Operation, init_db
 
@@ -107,7 +114,6 @@ def test_declare_service():
         "service": "declared-svc",
         "node_name": "declare-node",
         "flake": "path:/test",
-        "environment": "dev",
     }, headers=API_KEY_HEADER)
     assert r.status_code == 200
     
@@ -241,6 +247,6 @@ def test_nodes_endpoint():
     db.commit()
     db.close()
 
-    r = client.get("/nodes")
+    r = client.get("/nodes", headers=API_KEY_HEADER)
     assert r.status_code == 200
     assert any(n["name"] == "n1" for n in r.json())

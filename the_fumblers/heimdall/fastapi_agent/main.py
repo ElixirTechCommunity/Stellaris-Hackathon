@@ -5,18 +5,30 @@ import uvicorn
 import asyncio
 import json
 import os
+import sys
 import httpx
 import time
 import hmac
 import hashlib
+from dotenv import load_dotenv
+
+_ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if _ROOT_DIR not in sys.path:
+    sys.path.insert(0, _ROOT_DIR)
+
+from app.logging_utils import setup_logging, bind_request_id
 
 # Configuration
-STATE_FILE = "state.json"
+load_dotenv()
+logger = setup_logging("heimdall.agent")
+STATE_FILE = os.getenv("HEIMDALL_STATE_FILE", os.path.join(os.path.dirname(__file__), "state.json"))
 WEBHOOK_URL = os.getenv("WEBHOOK_URL", "http://localhost:8080/webhook")
 _secret_value = os.getenv("WEBHOOK_SECRET")
 if not _secret_value:
     raise RuntimeError("WEBHOOK_SECRET environment variable must be set for webhook signing.")
 SECRET_KEY = _secret_value.encode()
+ALLOW_INSECURE_SIGNATURES = os.getenv("HEIMDALL_ALLOW_INSECURE_SIGNATURES", "").strip().lower() in {"1", "true", "yes"}
+DISABLE_BG_TASKS = os.getenv("HEIMDALL_AGENT_DISABLE_BG", "").strip().lower() in {"1", "true", "yes"}
 
 # State dictionaries
 service_state = {}
@@ -98,6 +110,10 @@ async def health_check_loop():
             print(f"Health check error: {e}")
 
 log_buffer = []
+LOG_DIR = os.getenv(
+    "HEIMDALL_LOG_DIR",
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "logs"))
+)
 
 async def flush_logs_loop():
     while True:
@@ -120,7 +136,8 @@ async def read_stream(stream, service: str, stream_name: str):
     if stream is None:
         return
         
-    log_file_path = f"../logs/{service}.log"
+    os.makedirs(LOG_DIR, exist_ok=True)
+    log_file_path = os.path.join(LOG_DIR, f"{service}.log")
     while True:
         line = await stream.readline()
         if not line:
@@ -161,11 +178,15 @@ class CommandRequest(BaseModel):
 async def lifespan(app: FastAPI):
     print("Starting up FastAPI node agent...")
     global webhook_client
-    webhook_client = httpx.AsyncClient(timeout=5.0)
-    
-    heartbeat_task = asyncio.create_task(send_heartbeat())
-    health_task = asyncio.create_task(health_check_loop())
-    log_flush_task = asyncio.create_task(flush_logs_loop())
+    if not DISABLE_BG_TASKS:
+        webhook_client = httpx.AsyncClient(timeout=5.0)
+        heartbeat_task = asyncio.create_task(send_heartbeat())
+        health_task = asyncio.create_task(health_check_loop())
+        log_flush_task = asyncio.create_task(flush_logs_loop())
+    else:
+        heartbeat_task = None
+        health_task = None
+        log_flush_task = None
     
     if os.path.exists(STATE_FILE):
         try:
@@ -191,9 +212,12 @@ async def lifespan(app: FastAPI):
 
     yield
     print("Shutting down FastAPI node agent...")
-    heartbeat_task.cancel()
-    health_task.cancel()
-    log_flush_task.cancel()
+    if heartbeat_task:
+        heartbeat_task.cancel()
+    if health_task:
+        health_task.cancel()
+    if log_flush_task:
+        log_flush_task.cancel()
     if webhook_client:
         await webhook_client.aclose()
 
@@ -221,10 +245,6 @@ async def verify_hmac(request: Request):
     timestamp = x_timestamp
     message = body_str + timestamp
     
-    print("SERVER BODY:", body_str)
-    print("SERVER TIMESTAMP:", timestamp)
-    print("SERVER MESSAGE:", message)
-    
     expected_signature = hmac.new(
         SECRET_KEY,
         message.encode(),
@@ -232,11 +252,33 @@ async def verify_hmac(request: Request):
     ).hexdigest()
     
     # Allow a bypass 'default-signature' for easier manual testing
-    if x_signature == "default-signature":
+    if ALLOW_INSECURE_SIGNATURES and x_signature == "default-signature":
         return
         
     if not hmac.compare_digest(expected_signature, x_signature):
         raise HTTPException(status_code=401, detail="Invalid signature")
+
+
+@app.middleware("http")
+async def add_request_id(request: Request, call_next):
+    request_id = request.headers.get("X-Request-ID")
+    if not request_id:
+        request_id = str(int(time.time() * 1000))
+    bind_request_id(request_id)
+    start = time.time()
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    duration_ms = int((time.time() - start) * 1000)
+    logger.info(
+        "request",
+        extra={
+            "method": request.method,
+            "path": request.url.path,
+            "status_code": response.status_code,
+            "duration_ms": duration_ms,
+        },
+    )
+    return response
 
 @app.get("/heartbeat")
 async def heartbeat():

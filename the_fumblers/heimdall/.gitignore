@@ -2,3 +2,6 @@
 .envrc
 .env
 .venv
+__pycache__/
+logs/
+heimdall.db

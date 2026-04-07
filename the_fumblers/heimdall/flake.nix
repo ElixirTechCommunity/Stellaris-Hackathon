@@ -17,6 +17,7 @@
         python314
         uv
         tailscale
+        tmux
       ];
     };
   };
