@@ -1,0 +1,83 @@
+syntax = "proto3";
+
+package aurva;
+
+option go_package = "github.com/aurva/compliance-engine/proto";
+
+// ComplianceService handles findings from cloud scanners
+service ComplianceService {
+  // ReportCloudFinding is called by scanners to report PII detections
+  rpc ReportCloudFinding(FindingRequest) returns (FindingResponse);
+  
+  // ReportScanProgress updates scan job progress
+  rpc ReportScanProgress(ProgressRequest) returns (ProgressResponse);
+  
+  // CompleteScan marks a scan job as complete
+  rpc CompleteScan(CompleteRequest) returns (CompleteResponse);
+}
+
+// FindingRequest contains a detected PII instance
+message FindingRequest {
+  string scan_id = 1;          // UUID of the scan job
+  string resource_id = 2;      // Resource identifier (s3://bucket/key or rds://instance/db/table)
+  string resource_type = 3;    // 's3_object' or 'rds_table'
+  string resource_name = 4;    // Human-readable name
+  string region = 5;           // AWS region
+  int64 size_bytes = 6;        // Resource size
+  
+  PIIDetection pii_detection = 7;  // The detected PII
+}
+
+// PIIDetection represents a single PII finding
+message PIIDetection {
+  string pii_type = 1;         // 'aadhaar', 'pan', 'gstin', 'phone', 'voter_id'
+  float confidence_score = 2;  // 0.0 to 1.0
+  string sample_data = 3;      // Masked sample for verification
+  string risk_level = 4;       // 'critical', 'high', 'medium', 'low'
+  string dpdp_section = 5;     // DPDP Act 2023 section reference
+  LocationInfo location = 6;   // Where the PII was found
+}
+
+// LocationInfo describes where PII was detected
+message LocationInfo {
+  int32 line_number = 1;       // For text files
+  string column_name = 2;      // For structured data
+  int64 offset = 3;            // Byte offset in file
+  string field_path = 4;       // JSON path or column hierarchy
+}
+
+// FindingResponse acknowledges receipt of finding
+message FindingResponse {
+  bool success = 1;
+  string message = 2;
+  int32 finding_id = 3;        // Database ID of recorded finding
+}
+
+// ProgressRequest updates scan job progress
+message ProgressRequest {
+  string scan_id = 1;
+  int32 progress_percent = 2;  // 0-100
+  int32 resources_scanned = 3;
+  int32 findings_count = 4;
+}
+
+// ProgressResponse acknowledges progress update
+message ProgressResponse {
+  bool success = 1;
+  string message = 2;
+}
+
+// CompleteRequest marks scan as complete
+message CompleteRequest {
+  string scan_id = 1;
+  bool success = 2;
+  string error_message = 3;    // Empty if successful
+  int32 total_resources = 4;
+  int32 total_findings = 5;
+}
+
+// CompleteResponse acknowledges completion
+message CompleteResponse {
+  bool success = 1;
+  string message = 2;
+}
