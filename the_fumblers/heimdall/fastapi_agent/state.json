@@ -1,0 +1,17 @@
+{
+  "success-svc": {
+    "pid": 1234,
+    "status": "dead",
+    "health_url": null
+  },
+  "service-1": {
+    "pid": 23084,
+    "status": "dead",
+    "health_url": "http://127.0.0.1:5000/"
+  },
+  "worker-1": {
+    "pid": 21388,
+    "status": "dead",
+    "health_url": null
+  }
+}
